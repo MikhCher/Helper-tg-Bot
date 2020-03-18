@@ -1,1 +1,1 @@
-worker: java Bot.java
+web: java -jar out/artifacts/BSTUHelperbot_jar/BSTUHelperbot.jar
