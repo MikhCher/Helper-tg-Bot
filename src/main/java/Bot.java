@@ -1,22 +1,19 @@
 import org.telegram.telegrambots.ApiContextInitializer;
 import org.telegram.telegrambots.TelegramBotsApi;
 import org.telegram.telegrambots.api.methods.send.SendMessage;
+import org.telegram.telegrambots.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.api.objects.Message;
 import org.telegram.telegrambots.api.objects.Update;
-import org.telegram.telegrambots.api.objects.replykeyboard.ReplyKeyboardMarkup;
-import org.telegram.telegrambots.api.objects.replykeyboard.buttons.KeyboardButton;
-import org.telegram.telegrambots.api.objects.replykeyboard.buttons.KeyboardRow;
+import org.telegram.telegrambots.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 import org.telegram.telegrambots.exceptions.TelegramApiRequestException;
-import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 
 public class Bot extends TelegramLongPollingBot {
-    private static final Logger log = Logger.getLogger(String.valueOf(Bot.class));
-
     public static void main(String[] args) {
         ApiContextInitializer.init();
         TelegramBotsApi telegramBotsApi = new TelegramBotsApi();
@@ -29,18 +26,169 @@ public class Bot extends TelegramLongPollingBot {
 
     @Override
         public void onUpdateReceived(Update update) {
-        Long chatId = update.getMessage().getChatId();
-        String inputText = update.getMessage().getText();
-
-        if (inputText.startsWith("/start")) {
-            SendMessage message = new SendMessage();
-            message.setChatId(chatId);
-            message.setText("Привет!\nРад что ты пользуешься мной, я тупой бот, котоырй ничего не может!!");
+        Message message = update.getMessage();
+        if (update.hasMessage()) {
+            switch (message.getText()) {
+                case "/start": {
+                    sendMsg(message, "Привет, " + message.getChat().getFirstName() + "! Pад видеть тебя" + Smile.WINK.get() +
+                            "\nЯ бот, призванный немного облегчить студенческую жизнь\n\n" +
+                            "Скоро у меня появятся такие функции как:\n" +
+                            "    " + Smile.SELECT.get() + "  Отображение полного расписания группы И881\n" +
+                            "    " + Smile.X.get() + "  Список всех необходимых заданий по каждому предмету\n\n" +
+                            "Для обзора доступных команд используй /info\n\n" +
+                            "Если у тебя появились пожелания или ты нашел какой-то баг, сообщи моему хозяину: @MChered");
+                    break;
+                }
+                case "/info": {
+                    sendMsg(message, "Чтобы управлять мной используй следующие команды:\n\n" +
+                            "/timetable - Вывод расписания занятий на каждый день");
+                    break;
+                }
+                case "/timetable": {
+                    try {
+                        execute(sendTimetableMessage(update.getMessage().getChatId()));
+                    } catch (TelegramApiException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                }
+                default: {
+                    sendMsg(message, "Я не знаю такой команды, используй /info для обзора команд");
+                    break;
+                }
+            }
+        } else if(update.hasCallbackQuery()){
+            DeleteMessage deleteMessage = new DeleteMessage();
+            deleteMessage.setChatId(update.getCallbackQuery().getMessage().getChatId().toString());
+            deleteMessage.setMessageId(update.getCallbackQuery().getMessage().getMessageId());
             try {
-                execute(message);
+                execute(deleteMessage);
             } catch (TelegramApiException e) {
                 e.printStackTrace();
             }
+            try {
+                execute(new SendMessage().setText(
+                        getEvenTimetable(update.getCallbackQuery().getData()))
+                        .setChatId(update.getCallbackQuery().getMessage().getChatId()));
+            } catch (TelegramApiException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private SendMessage sendTimetableMessage(long chatId) {
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+
+        InlineKeyboardButton mondayButton = new InlineKeyboardButton();
+        InlineKeyboardButton tuesdayButton = new InlineKeyboardButton();
+        InlineKeyboardButton wednesdayButton = new InlineKeyboardButton();
+        InlineKeyboardButton thursdayButton = new InlineKeyboardButton();
+        InlineKeyboardButton fridayButton = new InlineKeyboardButton();
+        InlineKeyboardButton saturdayButton = new InlineKeyboardButton();
+
+        mondayButton.setText("Понедельник");
+        mondayButton.setCallbackData("понедельник");
+        tuesdayButton.setText("Вторник");
+        tuesdayButton.setCallbackData("вторник");
+        wednesdayButton.setText("Среда");
+        wednesdayButton.setCallbackData("среда");
+        thursdayButton.setText("Четверг");
+        thursdayButton.setCallbackData("четверг");
+        fridayButton.setText("Пятница");
+        fridayButton.setCallbackData("пятница");
+        saturdayButton.setText("Суббота");
+        saturdayButton.setCallbackData("суббота");
+
+        List<InlineKeyboardButton> keyboardButtonsRow1 = new ArrayList<>();
+        List<InlineKeyboardButton> keyboardButtonsRow2 = new ArrayList<>();
+        List<InlineKeyboardButton> keyboardButtonsRow3 = new ArrayList<>();
+
+        keyboardButtonsRow1.add(mondayButton);
+        keyboardButtonsRow1.add(thursdayButton);
+        keyboardButtonsRow2.add(tuesdayButton);
+        keyboardButtonsRow2.add(fridayButton);
+        keyboardButtonsRow3.add(wednesdayButton);
+        keyboardButtonsRow3.add(saturdayButton);
+
+        List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
+        rowList.add(keyboardButtonsRow1);
+        rowList.add(keyboardButtonsRow2);
+        rowList.add(keyboardButtonsRow3);
+
+        inlineKeyboardMarkup.setKeyboard(rowList);
+        return new SendMessage().setChatId(chatId).setText("На какой день показать расписание?").setReplyMarkup(inlineKeyboardMarkup);
+    }
+
+    private String getEvenTimetable(String data) {
+        StringBuilder sb = new StringBuilder();
+        switch (data) {
+            case "понедельник": {
+                sb.append("Расписание на понедельник:\n");
+                for (Lesson lesson : EvenTimetable.MONDAY.getList()) {
+                    sb.append("\n").append(lesson.getName()).append(" ").append(lesson.getType())
+                            .append("\nПреподаватель:\n").append(lesson.getTeacher().toString())
+                            .append("\nАудитория: ").append(lesson.getClassroom())
+                            .append("\n").append(lesson.getContinues()).append("\n--------------------------------------------------");
+                }
+                break;
+            }
+            case "вторник": {
+                sb.append("Расписание на вторник:\n");
+                for (Lesson lesson : EvenTimetable.TUESDAY.getList()) {
+                    sb.append("\n").append(lesson.getName()).append(" ").append(lesson.getType())
+                            .append("\nПреподаватель:\n").append(lesson.getTeacher().toString())
+                            .append("\nАудитория: ").append(lesson.getClassroom())
+                            .append("\n").append(lesson.getContinues()).append("\n--------------------------------------------------");
+                }
+                break;
+            }
+            case "среда": {
+                sb.append("Расписание на среду:\n");
+                for (Lesson lesson : EvenTimetable.WEDNESDAY.getList()) {
+                    sb.append("\n").append(lesson.getName()).append(" ").append(lesson.getType())
+                            .append("\nПреподаватель:\n").append(lesson.getTeacher().toString())
+                            .append("\nАудитория: ").append(lesson.getClassroom())
+                            .append("\n").append(lesson.getContinues()).append("\n--------------------------------------------------");
+                }
+                break;
+            }
+            case "четверг": {
+                sb.append("Расписание на четверг:\n");
+                for (Lesson lesson : EvenTimetable.THURSDAY.getList()) {
+                    sb.append("\n").append(lesson.getName()).append(" ").append(lesson.getType())
+                            .append("\nПреподаватель:\n").append(lesson.getTeacher().toString())
+                            .append("\nАудитория: ").append(lesson.getClassroom())
+                            .append("\n").append(lesson.getContinues()).append("\n--------------------------------------------------");
+                }
+                break;
+            }
+            case "пятница": {
+                sb.append("Расписание на пятницу:\n");
+                for (Lesson lesson : EvenTimetable.FRIDAY.getList()) {
+                    sb.append("\n").append(lesson.getName()).append(" ").append(lesson.getType())
+                            .append("\nПреподаватель:\n").append(lesson.getTeacher().toString())
+                            .append("\nАудитория: ").append(lesson.getClassroom())
+                            .append("\n").append(lesson.getContinues()).append("\n--------------------------------------------------");
+                }
+                break;
+            }
+            case "суббота": {
+                sb.append("В эту субботу нет пар").append(Smile.RELIEVED.get()).append("\n");
+
+                break;
+            }
+        }
+        return sb.toString();
+    }
+
+    private void sendMsg(Message message, String text) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(message.getChatId());
+        sendMessage.setText(text);
+        try {
+            execute(sendMessage);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
         }
     }
 
