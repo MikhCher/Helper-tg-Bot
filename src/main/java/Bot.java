@@ -10,10 +10,16 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 import org.telegram.telegrambots.exceptions.TelegramApiRequestException;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class Bot extends TelegramLongPollingBot {
+    private static final String BOT_NAME = "BSTU_Helper_Bot";
+    private static final String TOKEN = "1025654575:AAFkxhiwVyRmdxadrR41AeJjoWmgjdNOHGg";
+    private static final String ADMIN_ID = "489188261";
+    private static final long ADMIN_ID_LONG = 489188261;
+
+    private Map<String, Profile> users = new HashMap<String, Profile>();
+
     public static void main(String[] args) {
         ApiContextInitializer.init();
         TelegramBotsApi telegramBotsApi = new TelegramBotsApi();
@@ -26,34 +32,80 @@ public class Bot extends TelegramLongPollingBot {
 
     @Override
         public void onUpdateReceived(Update update) {
-        Message message = update.getMessage();
         if (update.hasMessage()) {
+            Message message = update.getMessage();
             switch (message.getText()) {
                 case "/start": {
-                    sendMsg(message, "Привет, " + message.getChat().getFirstName() + "! Pад видеть тебя" + Smile.WINK.get() +
-                            "\nЯ бот, призванный немного облегчить студенческую жизнь\n\n" +
-                            "Скоро у меня появятся такие функции как:\n" +
-                            "    " + Smile.SELECT.get() + "  Отображение полного расписания группы И881\n" +
-                            "    " + Smile.X.get() + "  Список всех необходимых заданий по каждому предмету\n\n" +
-                            "Для обзора доступных команд используй /info\n\n" +
-                            "Если у тебя появились пожелания или ты нашел какой-то баг, сообщи моему хозяину: @MChered");
+                    registration(message);
                     break;
                 }
                 case "/info": {
+                    if (users.containsKey(message.getChatId().toString())) {
                     sendMsg(message, "Чтобы управлять мной используй следующие команды:\n\n" +
                             "/timetable - Вывод расписания занятий на каждый день");
+                    } else {
+                        sendMsg(message, "У тебя нет прав для этой команды :(");
+                    }
                     break;
                 }
                 case "/timetable": {
-                    try {
-                        execute(sendTimetableMessage(update.getMessage().getChatId()));
-                    } catch (TelegramApiException e) {
-                        e.printStackTrace();
+                    if (users.containsKey(message.getChatId().toString())) {
+                        try {
+                            execute(sendTimetableMessage(update.getMessage().getChatId()));
+                        } catch (TelegramApiException e) {
+                            e.printStackTrace();
+                        }
+                    } else {
+                        sendMsg(message, "У тебя нет прав для этой команды :(");
                     }
                     break;
                 }
                 default: {
-                    sendMsg(message, "Я не знаю такой команды, используй /info для обзора команд");
+                    if (message.getText().startsWith("/reg") && !users.containsKey(message.getChatId().toString())) {
+                        String text = message.getText();
+                        String[] data = new String[3];
+
+
+
+                        String[] info = text.split(" ");
+                        for (int i = 1; i < 4; i++) {
+                            if (info[i] != null) {
+                                data[i - 1] = info[i];
+                            }
+                        }
+
+                        try {
+                            execute(new SendMessage(message.getChatId(), "Твои данные были отправлены администратору на проверку, дождись его решения"));
+                        } catch (TelegramApiException e) {
+                            e.printStackTrace();
+                        }
+
+                        SendMessage sendMessage = new SendMessage(ADMIN_ID, "Предоставить доступ к базе:\n" +
+                                "" + data[0] + " " + data[1] + " " + data[2] +
+                                "\n" + message.getChatId());
+
+                        InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup();
+                        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+                        List<InlineKeyboardButton> row1 = new ArrayList<>();
+                        InlineKeyboardButton accept = new InlineKeyboardButton(Smile.SELECT.get());
+                        InlineKeyboardButton reject = new InlineKeyboardButton(Smile.X.get());
+                        accept.setCallbackData("принять");
+                        reject.setCallbackData("отклонить");
+                        row1.add(accept);
+                        row1.add(reject);
+                        rows.add(row1);
+                        keyboard.setKeyboard(rows);
+
+                        sendMessage.setReplyMarkup(keyboard);
+
+                        try {
+                            execute(sendMessage);
+                        } catch (TelegramApiException e) {
+                            e.printStackTrace();
+                        }
+                        break;
+                    }
+                    sendMsg(message, "Упс... Что-то пошло не так");
                     break;
                 }
             }
@@ -66,13 +118,90 @@ public class Bot extends TelegramLongPollingBot {
             } catch (TelegramApiException e) {
                 e.printStackTrace();
             }
-            try {
-                execute(new SendMessage().setText(
-                        getEvenTimetable(update.getCallbackQuery().getData()))
-                        .setChatId(update.getCallbackQuery().getMessage().getChatId()));
-            } catch (TelegramApiException e) {
-                e.printStackTrace();
+
+            String data = update.getCallbackQuery().getData();
+            switch (data) {
+                case "понедельник":
+                case "вторник":
+                case "среда":
+                case "четверг":
+                case "пятница":
+                case "суббота":
+                    try {
+                        execute(new SendMessage().setText(
+                                getEvenTimetable(update.getCallbackQuery().getData()))
+                                .setChatId(update.getCallbackQuery().getMessage().getChatId()));
+                    } catch (TelegramApiException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                case "Начало регистрации":
+                    SendMessage sendMessage = new SendMessage();
+                    sendMessage.setText("Отлично, перейдем к заполнению анкеты\n" +
+                            "ВАЖНО! Заполни свои анкету строго по образцу\n\n" +
+                            "/reg Иванов Иван 01.01.2000");
+                    sendMessage.setChatId(update.getCallbackQuery().getMessage().getChatId());
+
+                    try {
+                        execute(sendMessage);
+                    } catch (TelegramApiException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                case "принять": {
+                    String[] words = update.getCallbackQuery().getMessage().getText().split("\n");
+                    String key = words[words.length - 1];
+                    String[] user = words[words.length - 2].split(" ");
+                    Profile.Post post = key.equals(ADMIN_ID) ? Profile.Post.ADMIN : Profile.Post.STUDENT;
+                    users.put(key, new Profile(user[0], user[1], user[2], post));
+
+                    try {
+                        execute(new SendMessage(key, "Поздравляем, ты получил доступ к моим функциям\n" +
+                                "Для подробной информации используй /info"));
+                    } catch (TelegramApiException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                }
+                case "отклонить": {
+                    String[] words = update.getCallbackQuery().getMessage().getText().split("\n");
+                    String key = words[words.length - 1];
+                    try {
+                        execute(new SendMessage(key, "К сожалению тебе было отказано в доступе :(\n" +
+                                "Если возникла какая-то ошибка напиши в личку @MChered"));
+                    } catch (TelegramApiException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                }
             }
+        }
+    }
+
+    private void registration(Message message) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(message.getChatId());
+        sendMessage.setText("Итак, чтобы начать пользоваться мной, тебе надо зарегестрироваться\n" +
+                "Не волнуйся, это займет немного времени\n" +
+                "Как будешь готов, нажми на кнопку ниже");
+
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+
+        InlineKeyboardButton registerButton = new InlineKeyboardButton("Начать регистрацию");
+        registerButton.setCallbackData("Начало регистрации");
+
+        List<InlineKeyboardButton> keyboardList = new ArrayList<>();
+        keyboardList.add(registerButton);
+        List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
+        rowList.add(keyboardList);
+        inlineKeyboardMarkup.setKeyboard(rowList);
+
+        sendMessage.setReplyMarkup(inlineKeyboardMarkup);
+
+        try {
+            execute(sendMessage);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
         }
     }
 
@@ -185,20 +314,20 @@ public class Bot extends TelegramLongPollingBot {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(message.getChatId());
         sendMessage.setText(text);
+        System.out.println(message.getChatId().toString());
         try {
             execute(sendMessage);
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
     }
-
     @Override
     public String getBotToken() {
-        return "1025654575:AAFkxhiwVyRmdxadrR41AeJjoWmgjdNOHGg";
+        return TOKEN;
     }
 
     @Override
     public String getBotUsername() {
-        return "BSTU_Helper_Bot";
+        return BOT_NAME;
     }
 }
