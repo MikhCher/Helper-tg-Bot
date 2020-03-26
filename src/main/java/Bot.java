@@ -20,6 +20,9 @@ public class Bot extends TelegramLongPollingBot {
 
     private Map<String, Profile> users = new HashMap<String, Profile>();
 
+    private boolean onAddMode = false;
+    private boolean onRemoveMode = false;
+
     public static void main(String[] args) {
         ApiContextInitializer.init();
         TelegramBotsApi telegramBotsApi = new TelegramBotsApi();
@@ -41,10 +44,53 @@ public class Bot extends TelegramLongPollingBot {
                 }
                 case "/info": {
                     if (users.containsKey(message.getChatId().toString())) {
-                    sendMsg(message, "Чтобы управлять мной используй следующие команды:\n\n" +
-                            "/timetable - Вывод расписания занятий на каждый день");
+                        try {
+                            execute(new SendMessage(message.getChatId(), "Чтобы управлять мной используй следующие команды:\n\n" +
+                                    "/timetable - Вывод расписания занятий на каждый день\n" +
+                                    "/note - Работа с заметками"));
+                        } catch (TelegramApiException e) {
+                            e.printStackTrace();
+                        }
                     } else {
-                        sendMsg(message, "У тебя нет прав для этой команды :(");
+                        try {
+                            execute(new SendMessage(message.getChatId(), "У тебя нет прав для этой команды :("));
+                        } catch (TelegramApiException e) {
+                            e.printStackTrace();
+                        }                     }
+                    break;
+                }
+                case "/note": {
+                    if (users.containsKey(message.getChatId().toString())) {
+                        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+                        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+                        List<InlineKeyboardButton> row1 = new ArrayList<>();
+                        List<InlineKeyboardButton> row2 = new ArrayList<>();
+                        InlineKeyboardButton showButton = new InlineKeyboardButton("Посмотреть");
+                        showButton.setCallbackData("show notes");
+                        InlineKeyboardButton addButton = new InlineKeyboardButton("Добавить");
+                        addButton.setCallbackData("add note");
+                        InlineKeyboardButton removeButton = new InlineKeyboardButton("Удалить");
+                        removeButton.setCallbackData("remove note");
+                        row1.add(showButton);
+                        row2.add(addButton);
+                        row2.add(removeButton);
+                        keyboard.add(row1);
+                        keyboard.add(row2);
+                        inlineKeyboardMarkup.setKeyboard(keyboard);
+
+                        SendMessage sendMessage = new SendMessage(message.getChatId(), "Выбери действие");
+                        sendMessage.setReplyMarkup(inlineKeyboardMarkup);
+                        try {
+                            execute(sendMessage);
+                        } catch (TelegramApiException e) {
+                            e.printStackTrace();
+                        }
+                    } else {
+                        try {
+                            execute(new SendMessage(message.getChatId(), "У тебя нет прав для этой команды :("));
+                        } catch (TelegramApiException e) {
+                            e.printStackTrace();
+                        }
                     }
                     break;
                 }
@@ -56,7 +102,11 @@ public class Bot extends TelegramLongPollingBot {
                             e.printStackTrace();
                         }
                     } else {
-                        sendMsg(message, "У тебя нет прав для этой команды :(");
+                        try {
+                            execute(new SendMessage(message.getChatId(), "У тебя нет прав для этой команды :("));
+                        } catch (TelegramApiException e) {
+                            e.printStackTrace();
+                        }
                     }
                     break;
                 }
@@ -104,11 +154,46 @@ public class Bot extends TelegramLongPollingBot {
                             e.printStackTrace();
                         }
                         break;
+                    } else if (onAddMode) {
+                        users.get(message.getChatId().toString()).getNotes().add(message.getText());
+                        try {
+                            execute(new SendMessage(message.getChatId(), "Заметка добавлена!"));
+                        } catch (TelegramApiException e) {
+                            e.printStackTrace();
+                        }
+                    } else  if (onRemoveMode) {
+                        int index = -1;
+                        try {
+                            index = Integer.valueOf(message.getText());
+                        } catch (NumberFormatException e) {
+                            System.out.println(e.toString());
+                        }
+                        if (index > users.get(message.getChatId().toString()).getNotes().size() || index < 0) {
+                            try {
+                                execute(new SendMessage(message.getChatId(), "Нет заметки с таким номером"));
+                            } catch (TelegramApiException e) {
+                                e.printStackTrace();
+                            }
+                        } else {
+                            users.get(message.getChatId().toString()).getNotes().remove(index - 1);
+                            try {
+                                execute(new SendMessage(message.getChatId(), "Заметка успешно удалена!"));
+                            } catch (TelegramApiException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    } else {
+                        try {
+                            execute(new SendMessage(message.getChatId(), "Упс... Что-то пошло не так"));
+                        } catch (TelegramApiException e) {
+                            e.printStackTrace();
+                        }
                     }
-                    sendMsg(message, "Упс... Что-то пошло не так");
                     break;
                 }
             }
+            onAddMode = false;
+            onRemoveMode = false;
         } else if(update.hasCallbackQuery()){
             DeleteMessage deleteMessage = new DeleteMessage();
             deleteMessage.setChatId(update.getCallbackQuery().getMessage().getChatId().toString());
@@ -135,7 +220,7 @@ public class Bot extends TelegramLongPollingBot {
                         e.printStackTrace();
                     }
                     break;
-                case "Начало регистрации":
+                case "Начало регистрации": {
                     SendMessage sendMessage = new SendMessage();
                     sendMessage.setText("Отлично, перейдем к заполнению анкеты\n" +
                             "ВАЖНО! Заполни свои анкету строго по образцу\n\n" +
@@ -148,6 +233,7 @@ public class Bot extends TelegramLongPollingBot {
                         e.printStackTrace();
                     }
                     break;
+                }
                 case "принять": {
                     String[] words = update.getCallbackQuery().getMessage().getText().split("\n");
                     String key = words[words.length - 1];
@@ -174,8 +260,56 @@ public class Bot extends TelegramLongPollingBot {
                     }
                     break;
                 }
+                case "show notes": {
+                    try {
+                        execute(new SendMessage(
+                                update.getCallbackQuery().getMessage().getChatId().toString(),
+                                getUserNotes(update)
+                        ));
+                    } catch (TelegramApiException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                }
+                case "add note": {
+                    onAddMode = true;
+                    try {
+                        execute(new SendMessage(
+                                update.getCallbackQuery().getMessage().getChatId(),
+                                "Введи текст для своей заметки:"
+                                ));
+                    } catch (TelegramApiException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                }
+                case "remove note": {
+                    try {
+                        execute(new SendMessage(
+                                update.getCallbackQuery().getMessage().getChatId(),
+                                "Напиши номер заметки которую хочешь удалить\n\n" + getUserNotes(update)
+                        ));
+                    } catch (TelegramApiException e) {
+                        e.printStackTrace();
+                    }
+                    onRemoveMode = true;
+                    break;
+                }
             }
         }
+    }
+
+    private String getUserNotes(Update update) {
+        List<String> notes = users.get(update.getCallbackQuery().getMessage().getChatId().toString()).getNotes();
+        StringBuilder sb = new StringBuilder();
+        int index = 1;
+        for (String note : notes) {
+            sb.append(index++).append(". ").append(note).append("\n");
+        }
+        if (index == 1) {
+            sb.append("У тебя нет заметок");
+        }
+        return sb.toString();
     }
 
     private void registration(Message message) {
@@ -310,17 +444,7 @@ public class Bot extends TelegramLongPollingBot {
         return sb.toString();
     }
 
-    private void sendMsg(Message message, String text) {
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(message.getChatId());
-        sendMessage.setText(text);
-        System.out.println(message.getChatId().toString());
-        try {
-            execute(sendMessage);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
-    }
+
     @Override
     public String getBotToken() {
         return TOKEN;
