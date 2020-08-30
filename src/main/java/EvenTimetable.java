@@ -1,33 +1,32 @@
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 
-public enum EvenTimetable {
-    MONDAY(Arrays.asList(
-            Lesson.PHYSICS_LEC, Lesson.ELTECH_LEC
-    )),
-    TUESDAY(Arrays.asList(
-            Lesson.MATH_PR, Lesson.PE, Lesson.SOPROMAT_LEC
-    )),
-    WEDNESDAY(Arrays.asList(
-            Lesson.TEORMEKH_LEC, Lesson.TEORMEKH_PR, Lesson.MIKROELECTRONIC_LEC
-    )),
-    THURSDAY(Arrays.asList(
-            Lesson.METROLOGY_LEC, Lesson.SYSTEMS_LEC, Lesson.METROLOGY_PR, Lesson.ENGLISH
-    )),
-    FRIDAY(Arrays.asList(
-            Lesson.PE, Lesson.MATH_LEC, Lesson.PHYSICS_LAB
-    )),
-    SUTARDAY(null);
+public enum  EvenTimetable {
+        MONDAY(null),
+        TUESDAY(Arrays.asList(
+                Lesson.ELMASH_LEC, Lesson.ITSEC_PR, Lesson.PE, Lesson.MIRTC_LEC
+        )),
+        WEDNESDAY(Arrays.asList(
+                Lesson.MIRTC_LAB, Lesson.OMR_PR, Lesson.TMM_LAB, Lesson.TAU_PR
+        )),
+        THURSDAY(Arrays.asList(
+                Lesson.ITSEC_LEC, Lesson.USTRMEC_LAB, Lesson.USTRMEC_LEC, Lesson.TAU_PR
+        )),
+        FRIDAY(Arrays.asList(
+                Lesson.HYDROMECH_LAB, Lesson.ELMASH_LAB, Lesson.TAU_LEC, Lesson.USTRMEC_LEC2
+        )),
+        SATURDAY(Arrays.asList(
+                Lesson.ELMASH_PR, Lesson.TMM_LEC, Lesson.PE, Lesson.KP_PR
+        ));
 
-    private List<Lesson> list;
+        private List<Lesson> list;
 
-    EvenTimetable(List<Lesson> list) {
-        this.list = list;
-    }
+        EvenTimetable(List<Lesson> list) {
+            this.list = list;
+        }
 
-    public List<Lesson> getList() {
-        return list;
-    }
+        public List<Lesson> getList() {
+            return list;
+        }
+
 }

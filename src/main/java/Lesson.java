@@ -1,38 +1,51 @@
 import java.util.Date;
 
 public enum Lesson {
-    PHYSICS_LEC("Физика","9:00 - 10:30","331*","(лек)", Teacher.LENTOVSKIY),
-    PHYSICS_PR("Физика","16:45 - 18:15","328а*","(пр)", Teacher.IVANOV),
-    PHYSICS_LAB("Физика","16:45 - 18:15","322*","(лаб)", Teacher.LABI),
-    ELTECH_LEC("Элтех","10:50 - 12:20","325*","(лек)", Teacher.GUSEV),
-    ELTECH_LAB("Элтех","12:40 - 14:10","360*","(лаб)", Teacher.GUSEV),
-    MATH_LEC("Математика 5","14:55 - 16:25","313","(лек)", Teacher.SOLDATKIN),
-    MATH_PR("Математика 5","10:50 - 12:20","477","(пр)", Teacher.ORESHINA),
+    ELMASH_LEC("Электромашины","9:00 - 10:30","270*(Фесто)","(лек)", Teacher.SAVELEV),
+    ITSEC_PR("Информационная безопасность","10:50 - 12:20","371*","(пр)", Teacher.YAKOVENKO),
+    MIRTC_LEC("МИРТС","14:55 - 16:25","270*(Фесто)","(лек)", Teacher.KOROTKOV),
+    HYDROMECH_LEC("Гидромеханика","9:00 - 10:30","270*(Фесто)","(лек)", Teacher.STAZHKOV),
+    OMR_PR("Основы мехатроники и робототехники","10:50 - 12:20","155*","(пр)", Teacher.MOROZ),
+    TMM_LAB("Теория механизмов и машин","12:40 - 14:10","372*","(лаб)", Teacher.LAVROV, Teacher.VOROTINCEV),
+    TAU_PR("ТАУ","14:55 - 16:25","267*(К.Кп)","(пр)", Teacher.KOROBKOVA, Teacher.ZHUKOV),
     PE("Физвоспитание","12:40 - 14:10","-","(пр)", Teacher.FIZRUK),
-    SOPROMAT_LEC("Сопр. Материалов","14:55 - 16:25","310","(лек)", Teacher.BUTKAREVA),
-    SOPROMAT_PR("Сопр. Материалов","16:45 - 18:15","102*","(пр)", Teacher.BUTKAREVA),
-    TEORMEKH_LEC("Теор. Механика","10:50 - 12:20","318","(лек)", Teacher.ILIKHMENEV),
-    TEORMEKH_PR("Теор. Механика","12:40 - 14:10","444","(пр)", Teacher.ILIKHMENEV),
-    MIKROELECTRONIC_LEC("Микроэлектроника","14:55 - 16:25","493","(лек)", Teacher.YARYGIN),
-    MIKROELECTRONIC_LAB("Микроэлектроника","12:40 - 14:10","423в","(лаб)", Teacher.YARYGIN),
-    METROLOGY_LEC("Метрология","10:50 - 12:20","316","(лек)", Teacher.BOLSHAKOVA),
-    METROLOGY_PR("Метрология","14:55 - 16:25","332","(пр)", Teacher.BOLSHAKOVA),
-    SYSTEMS_LEC("Сисетмы и сети","12:40 - 14:10","313","(лек)", Teacher.BESPERSTOV),
-    SYSTEMS_PR("Сисетмы и сети","14:55 - 16:25","278(?)","(пр)", Teacher.OSINSKAYA),
-    ENGLISH("Иностранный язык","16:45 - 18:15","-","(пр)", Teacher.NEVZOROVA);
+    ITSEC_LEC("Информационная безопасность","9:00 - 10:30","270*(Фесто)","(лек)", Teacher.YAKOVENKO),
+    USTRMEC_LAB("Устройство мехатроники","10:50 - 12:20","Леб 28","(лаб)", Teacher.SLOBODZYAN, Teacher.ROMANENKO),
+    USTRMEC_LEC("Устройство мехатроники","12:40 - 14:10","270*(Фесто)","(лек)", Teacher.SLOBODZYAN),
+    USTRMEC_LEC2("Устройство мехатроники","16:45 - 18:15","270*(Фесто)","(лек)", Teacher.SLOBODZYAN),
+    HYDROMECH_LAB("Гидромеханика","10:50 - 12:20","152*","(лаб)", Teacher.STAZHKOV, Teacher.VOROTINCEV),
+    ELMASH_LAB("Электромашины","12:40 - 14:10","156*(Maxon)","(лаб)", Teacher.SAVELEV, Teacher.DZUKICH),
+    TAU_LEC("ТАУ","14:55 - 16:25","270*(Фесто)","(лек)", Teacher.ZHUKOV),
+    MIRTC_LEC2("МИРТС","16:45 - 18:15","270*(Фесто)","(лек)", Teacher.KOROTKOV),
+    TMM_PR("Теория механизмов и машин","9:00 - 10:30","268*(Фесто), 155*","(пр)", Teacher.LAVROV),
+    TMM_LEC("Теория механизмов и машин","10:50 - 12:20","270*(Фесто)","(лек)", Teacher.LAVROV),
+    KP_PR("КП","14:55 - 16:25","532*","(пр)", Teacher.BOBROV),
+    ELMASH_PR("Электромашины","9:00 - 10:30","269*(Фесто)","(пр)", Teacher.SAVELEV),
+    MIRTC_LAB("МИРТС","9:00 - 10:30","268*(Фесто)","(лаб)", Teacher.KOROTKOV);
+
 
     private String name;
     private String continues;
     private String classroom;
     private String type;
-    private Teacher teacher;
+    private Teacher teacher1;
+    private Teacher teacher2 = Teacher.NULL;
 
     Lesson(String name, String continues, String classroom, String type, Teacher teacher) {
         this.name = name;
         this.continues = continues;
         this.classroom = classroom;
         this.type = type;
-        this.teacher = teacher;
+        this.teacher1 = teacher;
+    }
+
+    Lesson(String name, String continues, String classroom, String type, Teacher teacher1, Teacher teacher2) {
+        this.name = name;
+        this.continues = continues;
+        this.classroom = classroom;
+        this.type = type;
+        this.teacher1 = teacher1;
+        this.teacher2 = teacher2;
     }
 
     public String getName() {
@@ -51,7 +64,11 @@ public enum Lesson {
         return type;
     }
 
-    public Teacher getTeacher() {
-        return teacher;
+    public Teacher getTeacher1() {
+        return teacher1;
+    }
+
+    public Teacher getTeacher2() {
+        return teacher2;
     }
 }

@@ -18,11 +18,6 @@ public class Bot extends TelegramLongPollingBot {
     private static final String ADMIN_ID = "489188261";
     private static final long ADMIN_ID_LONG = 489188261;
 
-    private Map<String, Profile> users = new HashMap<String, Profile>();
-
-    private boolean onAddMode = false;
-    private boolean onRemoveMode = false;
-
     public static void main(String[] args) {
         ApiContextInitializer.init();
         TelegramBotsApi telegramBotsApi = new TelegramBotsApi();
@@ -39,161 +34,42 @@ public class Bot extends TelegramLongPollingBot {
             Message message = update.getMessage();
             switch (message.getText()) {
                 case "/start": {
-                    registration(message);
+                    try {
+                        execute(new SendMessage(message.getChatId(), "Чтобы посмотреть расписание, используй /timetable"));
+                    } catch (TelegramApiException e) {
+                        e.printStackTrace();
+                    }
                     break;
                 }
                 case "/info": {
-                    if (users.containsKey(message.getChatId().toString())) {
-                        try {
-                            execute(new SendMessage(message.getChatId(), "Чтобы управлять мной используй следующие команды:\n\n" +
-                                    "/timetable - Вывод расписания занятий на каждый день\n" +
-                                    "/note - Работа с заметками"));
-                        } catch (TelegramApiException e) {
-                            e.printStackTrace();
-                        }
-                    } else {
-                        try {
-                            execute(new SendMessage(message.getChatId(), "У тебя нет прав для этой команды :("));
-                        } catch (TelegramApiException e) {
-                            e.printStackTrace();
-                        }                     }
-                    break;
-                }
-                case "/note": {
-                    if (users.containsKey(message.getChatId().toString())) {
-                        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
-                        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-                        List<InlineKeyboardButton> row1 = new ArrayList<>();
-                        List<InlineKeyboardButton> row2 = new ArrayList<>();
-                        InlineKeyboardButton showButton = new InlineKeyboardButton("Посмотреть");
-                        showButton.setCallbackData("show notes");
-                        InlineKeyboardButton addButton = new InlineKeyboardButton("Добавить");
-                        addButton.setCallbackData("add note");
-                        InlineKeyboardButton removeButton = new InlineKeyboardButton("Удалить");
-                        removeButton.setCallbackData("remove note");
-                        row1.add(showButton);
-                        row2.add(addButton);
-                        row2.add(removeButton);
-                        keyboard.add(row1);
-                        keyboard.add(row2);
-                        inlineKeyboardMarkup.setKeyboard(keyboard);
-
-                        SendMessage sendMessage = new SendMessage(message.getChatId(), "Выбери действие");
-                        sendMessage.setReplyMarkup(inlineKeyboardMarkup);
-                        try {
-                            execute(sendMessage);
-                        } catch (TelegramApiException e) {
-                            e.printStackTrace();
-                        }
-                    } else {
-                        try {
-                            execute(new SendMessage(message.getChatId(), "У тебя нет прав для этой команды :("));
-                        } catch (TelegramApiException e) {
-                            e.printStackTrace();
-                        }
+                    try {
+                        execute(new SendMessage(message.getChatId(), "Чтобы управлять мной используй следующие команды:\n\n" +
+                                "/timetable - Вывод расписания занятий на каждый день\n"));
+                    } catch (TelegramApiException e) {
+                        e.printStackTrace();
                     }
                     break;
                 }
+
                 case "/timetable": {
-                    if (users.containsKey(message.getChatId().toString())) {
-                        try {
-                            execute(sendTimetableMessage(update.getMessage().getChatId()));
-                        } catch (TelegramApiException e) {
-                            e.printStackTrace();
-                        }
-                    } else {
-                        try {
-                            execute(new SendMessage(message.getChatId(), "У тебя нет прав для этой команды :("));
-                        } catch (TelegramApiException e) {
-                            e.printStackTrace();
-                        }
+                    try {
+                        execute(sendTimetableMessage(update.getMessage().getChatId()));
+                    } catch (TelegramApiException e) {
+                        e.printStackTrace();
                     }
                     break;
                 }
+
                 default: {
-                    if (message.getText().startsWith("/reg") && !users.containsKey(message.getChatId().toString())) {
-                        String text = message.getText();
-                        String[] data = new String[3];
-
-
-
-                        String[] info = text.split(" ");
-                        for (int i = 1; i < 4; i++) {
-                            if (info[i] != null) {
-                                data[i - 1] = info[i];
-                            }
-                        }
-
-                        try {
-                            execute(new SendMessage(message.getChatId(), "Твои данные были отправлены администратору на проверку, дождись его решения"));
-                        } catch (TelegramApiException e) {
-                            e.printStackTrace();
-                        }
-
-                        SendMessage sendMessage = new SendMessage(ADMIN_ID, "Предоставить доступ к базе:\n" +
-                                "" + data[0] + " " + data[1] + " " + data[2] +
-                                "\n" + message.getChatId());
-
-                        InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup();
-                        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
-                        List<InlineKeyboardButton> row1 = new ArrayList<>();
-                        InlineKeyboardButton accept = new InlineKeyboardButton(Smile.SELECT.get());
-                        InlineKeyboardButton reject = new InlineKeyboardButton(Smile.X.get());
-                        accept.setCallbackData("принять");
-                        reject.setCallbackData("отклонить");
-                        row1.add(accept);
-                        row1.add(reject);
-                        rows.add(row1);
-                        keyboard.setKeyboard(rows);
-
-                        sendMessage.setReplyMarkup(keyboard);
-
-                        try {
-                            execute(sendMessage);
-                        } catch (TelegramApiException e) {
-                            e.printStackTrace();
-                        }
-                        break;
-                    } else if (onAddMode) {
-                        users.get(message.getChatId().toString()).getNotes().add(message.getText());
-                        try {
-                            execute(new SendMessage(message.getChatId(), "Заметка добавлена!"));
-                        } catch (TelegramApiException e) {
-                            e.printStackTrace();
-                        }
-                    } else  if (onRemoveMode) {
-                        int index = -1;
-                        try {
-                            index = Integer.valueOf(message.getText());
-                        } catch (NumberFormatException e) {
-                            System.out.println(e.toString());
-                        }
-                        if (index > users.get(message.getChatId().toString()).getNotes().size() || index < 0) {
-                            try {
-                                execute(new SendMessage(message.getChatId(), "Нет заметки с таким номером"));
-                            } catch (TelegramApiException e) {
-                                e.printStackTrace();
-                            }
-                        } else {
-                            users.get(message.getChatId().toString()).getNotes().remove(index - 1);
-                            try {
-                                execute(new SendMessage(message.getChatId(), "Заметка успешно удалена!"));
-                            } catch (TelegramApiException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    } else {
-                        try {
-                            execute(new SendMessage(message.getChatId(), "Упс... Что-то пошло не так"));
-                        } catch (TelegramApiException e) {
-                            e.printStackTrace();
-                        }
+                    try {
+                        execute(new SendMessage(message.getChatId(), "Упс... Что-то пошло не так"));
+                    } catch (TelegramApiException e) {
+                        e.printStackTrace();
                     }
                     break;
                 }
             }
-            onAddMode = false;
-            onRemoveMode = false;
+
         } else if(update.hasCallbackQuery()){
             DeleteMessage deleteMessage = new DeleteMessage();
             deleteMessage.setChatId(update.getCallbackQuery().getMessage().getChatId().toString());
@@ -214,128 +90,14 @@ public class Bot extends TelegramLongPollingBot {
                 case "суббота":
                     try {
                         execute(new SendMessage().setText(
-                                getEvenTimetable(update.getCallbackQuery().getData()))
+                                getTimetable(update.getCallbackQuery().getData()))
                                 .setChatId(update.getCallbackQuery().getMessage().getChatId()));
                     } catch (TelegramApiException e) {
                         e.printStackTrace();
                     }
                     break;
-                case "Начало регистрации": {
-                    SendMessage sendMessage = new SendMessage();
-                    sendMessage.setText("Отлично, перейдем к заполнению анкеты\n" +
-                            "ВАЖНО! Заполни свои анкету строго по образцу\n\n" +
-                            "/reg Иванов Иван 01.01.2000");
-                    sendMessage.setChatId(update.getCallbackQuery().getMessage().getChatId());
 
-                    try {
-                        execute(sendMessage);
-                    } catch (TelegramApiException e) {
-                        e.printStackTrace();
-                    }
-                    break;
-                }
-                case "принять": {
-                    String[] words = update.getCallbackQuery().getMessage().getText().split("\n");
-                    String key = words[words.length - 1];
-                    String[] user = words[words.length - 2].split(" ");
-                    Profile.Post post = key.equals(ADMIN_ID) ? Profile.Post.ADMIN : Profile.Post.STUDENT;
-                    users.put(key, new Profile(user[0], user[1], user[2], post));
-
-                    try {
-                        execute(new SendMessage(key, "Поздравляем, ты получил доступ к моим функциям\n" +
-                                "Для подробной информации используй /info"));
-                    } catch (TelegramApiException e) {
-                        e.printStackTrace();
-                    }
-                    break;
-                }
-                case "отклонить": {
-                    String[] words = update.getCallbackQuery().getMessage().getText().split("\n");
-                    String key = words[words.length - 1];
-                    try {
-                        execute(new SendMessage(key, "К сожалению тебе было отказано в доступе :(\n" +
-                                "Если возникла какая-то ошибка напиши в личку @MChered"));
-                    } catch (TelegramApiException e) {
-                        e.printStackTrace();
-                    }
-                    break;
-                }
-                case "show notes": {
-                    try {
-                        execute(new SendMessage(
-                                update.getCallbackQuery().getMessage().getChatId().toString(),
-                                getUserNotes(update)
-                        ));
-                    } catch (TelegramApiException e) {
-                        e.printStackTrace();
-                    }
-                    break;
-                }
-                case "add note": {
-                    onAddMode = true;
-                    try {
-                        execute(new SendMessage(
-                                update.getCallbackQuery().getMessage().getChatId(),
-                                "Введи текст для своей заметки:"
-                                ));
-                    } catch (TelegramApiException e) {
-                        e.printStackTrace();
-                    }
-                    break;
-                }
-                case "remove note": {
-                    try {
-                        execute(new SendMessage(
-                                update.getCallbackQuery().getMessage().getChatId(),
-                                "Напиши номер заметки которую хочешь удалить\n\n" + getUserNotes(update)
-                        ));
-                    } catch (TelegramApiException e) {
-                        e.printStackTrace();
-                    }
-                    onRemoveMode = true;
-                    break;
-                }
             }
-        }
-    }
-
-    private String getUserNotes(Update update) {
-        List<String> notes = users.get(update.getCallbackQuery().getMessage().getChatId().toString()).getNotes();
-        StringBuilder sb = new StringBuilder();
-        int index = 1;
-        for (String note : notes) {
-            sb.append(index++).append(". ").append(note).append("\n");
-        }
-        if (index == 1) {
-            sb.append("У тебя нет заметок");
-        }
-        return sb.toString();
-    }
-
-    private void registration(Message message) {
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(message.getChatId());
-        sendMessage.setText("Итак, чтобы начать пользоваться мной, тебе надо зарегестрироваться\n" +
-                "Не волнуйся, это займет немного времени\n" +
-                "Как будешь готов, нажми на кнопку ниже");
-
-        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
-
-        InlineKeyboardButton registerButton = new InlineKeyboardButton("Начать регистрацию");
-        registerButton.setCallbackData("Начало регистрации");
-
-        List<InlineKeyboardButton> keyboardList = new ArrayList<>();
-        keyboardList.add(registerButton);
-        List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
-        rowList.add(keyboardList);
-        inlineKeyboardMarkup.setKeyboard(rowList);
-
-        sendMessage.setReplyMarkup(inlineKeyboardMarkup);
-
-        try {
-            execute(sendMessage);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
         }
     }
 
@@ -382,62 +144,98 @@ public class Bot extends TelegramLongPollingBot {
         return new SendMessage().setChatId(chatId).setText("На какой день показать расписание?").setReplyMarkup(inlineKeyboardMarkup);
     }
 
-    private String getEvenTimetable(String data) {
+    private void printTimetable(StringBuilder sb, Lesson lesson) {
+        sb.append("\n").append(lesson.getName()).append(" ").append(lesson.getType())
+                .append("\nПреподаватель:\n").append(lesson.getTeacher1().toString()).append("      ").append(lesson.getTeacher2().toString())
+                .append("\nАудитория: ").append(lesson.getClassroom())
+                .append("\n").append(lesson.getContinues()).append("\n----------------------------------------------------------------");
+    }
+
+    private int getWeekNumber() {
+        Calendar calendar = Calendar.getInstance();
+        return calendar.get(Calendar.WEEK_OF_YEAR);
+    }
+
+    private String getTimetable(String data) {
+        boolean even = getWeekNumber() % 2 == 0;
         StringBuilder sb = new StringBuilder();
         switch (data) {
             case "понедельник": {
                 sb.append("Расписание на понедельник:\n");
-                for (Lesson lesson : EvenTimetable.MONDAY.getList()) {
-                    sb.append("\n").append(lesson.getName()).append(" ").append(lesson.getType())
-                            .append("\nПреподаватель:\n").append(lesson.getTeacher().toString())
-                            .append("\nАудитория: ").append(lesson.getClassroom())
-                            .append("\n").append(lesson.getContinues()).append("\n--------------------------------------------------");
+                if (even) {
+                    for (Lesson lesson : UnevenTimetable.MONDAY.getList()) {
+                        printTimetable(sb, lesson);
+                    }
+                } else {
+                    for (Lesson lesson : EvenTimetable.MONDAY.getList()) {
+                        printTimetable(sb, lesson);
+                    }
                 }
                 break;
             }
             case "вторник": {
                 sb.append("Расписание на вторник:\n");
-                for (Lesson lesson : EvenTimetable.TUESDAY.getList()) {
-                    sb.append("\n").append(lesson.getName()).append(" ").append(lesson.getType())
-                            .append("\nПреподаватель:\n").append(lesson.getTeacher().toString())
-                            .append("\nАудитория: ").append(lesson.getClassroom())
-                            .append("\n").append(lesson.getContinues()).append("\n--------------------------------------------------");
+                if (even) {
+                    for (Lesson lesson : UnevenTimetable.TUESDAY.getList()) {
+                        printTimetable(sb, lesson);
+                    }
+                } else {
+                    for (Lesson lesson : EvenTimetable.TUESDAY.getList()) {
+                        printTimetable(sb, lesson);
+                    }
                 }
                 break;
             }
             case "среда": {
                 sb.append("Расписание на среду:\n");
-                for (Lesson lesson : EvenTimetable.WEDNESDAY.getList()) {
-                    sb.append("\n").append(lesson.getName()).append(" ").append(lesson.getType())
-                            .append("\nПреподаватель:\n").append(lesson.getTeacher().toString())
-                            .append("\nАудитория: ").append(lesson.getClassroom())
-                            .append("\n").append(lesson.getContinues()).append("\n--------------------------------------------------");
+                if (even) {
+                    for (Lesson lesson : UnevenTimetable.WEDNESDAY.getList()) {
+                        printTimetable(sb, lesson);
+                    }
+                } else {
+                    for (Lesson lesson : EvenTimetable.WEDNESDAY.getList()) {
+                        printTimetable(sb, lesson);
+                    }
                 }
                 break;
             }
             case "четверг": {
                 sb.append("Расписание на четверг:\n");
-                for (Lesson lesson : EvenTimetable.THURSDAY.getList()) {
-                    sb.append("\n").append(lesson.getName()).append(" ").append(lesson.getType())
-                            .append("\nПреподаватель:\n").append(lesson.getTeacher().toString())
-                            .append("\nАудитория: ").append(lesson.getClassroom())
-                            .append("\n").append(lesson.getContinues()).append("\n--------------------------------------------------");
+                if (even) {
+                    for (Lesson lesson : UnevenTimetable.THURSDAY.getList()) {
+                        printTimetable(sb, lesson);
+                    }
+                } else {
+                    for (Lesson lesson : EvenTimetable.THURSDAY.getList()) {
+                        printTimetable(sb, lesson);
+                    }
                 }
                 break;
             }
             case "пятница": {
                 sb.append("Расписание на пятницу:\n");
-                for (Lesson lesson : EvenTimetable.FRIDAY.getList()) {
-                    sb.append("\n").append(lesson.getName()).append(" ").append(lesson.getType())
-                            .append("\nПреподаватель:\n").append(lesson.getTeacher().toString())
-                            .append("\nАудитория: ").append(lesson.getClassroom())
-                            .append("\n").append(lesson.getContinues()).append("\n--------------------------------------------------");
+                if (even) {
+                    for (Lesson lesson : UnevenTimetable.FRIDAY.getList()) {
+                        printTimetable(sb, lesson);
+                    }
+                } else {
+                    for (Lesson lesson : EvenTimetable.FRIDAY.getList()) {
+                        printTimetable(sb, lesson);
+                    }
                 }
                 break;
             }
             case "суббота": {
-                sb.append("В эту субботу нет пар").append(Smile.RELIEVED.get()).append("\n");
-
+                sb.append("Расписание на субботу:\n");
+                if (even) {
+                    for (Lesson lesson : UnevenTimetable.SATURDAY.getList()) {
+                        printTimetable(sb, lesson);
+                    }
+                } else {
+                    for (Lesson lesson : EvenTimetable.SATURDAY.getList()) {
+                        printTimetable(sb, lesson);
+                    }
+                }
                 break;
             }
         }
